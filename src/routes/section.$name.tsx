@@ -251,6 +251,13 @@ function SectionPage() {
         <h1 className="text-base font-bold tracking-tight">{section.name}</h1>
       </div>
 
+      {!hasMember && (
+        <div className="mb-4 rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-900">
+          Select a Team Member in the top bar to begin the line check.
+        </div>
+      )}
+
+
       {/* Hero card */}
       <section className="rounded-2xl border border-border bg-card px-6 py-5 shadow-sm">
         <div className="flex flex-wrap items-center justify-between gap-4">
