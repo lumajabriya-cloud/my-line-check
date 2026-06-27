@@ -135,7 +135,17 @@ function SectionPage() {
     const e = state.entries[i.name]?.[slot];
     return e?.status && FLAG_STATUSES.has(e.status) && !e.note?.trim();
   });
-  const canSave = missingNotes.length === 0;
+  const hasMember = !!shell.member.trim();
+  const canSave = hasMember && missingNotes.length === 0;
+
+  const requireMember = () => {
+    if (!hasMember) {
+      alert("Please select a Team Member before continuing.");
+      return false;
+    }
+    return true;
+  };
+
 
   const setEntry = (item: string, patch: Partial<Entry>) => {
     setState((prev) => ({
