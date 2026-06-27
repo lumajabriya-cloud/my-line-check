@@ -148,6 +148,7 @@ function SectionPage() {
 
 
   const setEntry = (item: string, patch: Partial<Entry>) => {
+    if (!requireMember()) return;
     setState((prev) => ({
       ...prev,
       entries: {
@@ -164,11 +165,13 @@ function SectionPage() {
 
 
   const toggleCheck = (item: string) => {
+    if (!requireMember()) return;
     const cur = state.entries[item]?.[slot]?.status;
     setEntry(item, { status: cur === "OK" ? "" : "OK" });
   };
 
   const markAllOK = () => {
+    if (!requireMember()) return;
     setState((prev) => {
       const entries = { ...prev.entries };
       for (const it of allItems) {
@@ -184,7 +187,9 @@ function SectionPage() {
   };
 
   const saveCheck = () => {
+    if (!requireMember()) return;
     if (!canSave) return;
+
     try {
       localStorage.setItem(key, JSON.stringify(state));
       window.dispatchEvent(new Event("linecheck:update"));
