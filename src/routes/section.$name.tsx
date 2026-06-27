@@ -135,9 +135,20 @@ function SectionPage() {
     const e = state.entries[i.name]?.[slot];
     return e?.status && FLAG_STATUSES.has(e.status) && !e.note?.trim();
   });
-  const canSave = missingNotes.length === 0;
+  const hasMember = !!shell.member.trim();
+  const canSave = hasMember && missingNotes.length === 0;
+
+  const requireMember = () => {
+    if (!hasMember) {
+      alert("Please select a Team Member before continuing.");
+      return false;
+    }
+    return true;
+  };
+
 
   const setEntry = (item: string, patch: Partial<Entry>) => {
+    if (!requireMember()) return;
     setState((prev) => ({
       ...prev,
       entries: {
@@ -154,11 +165,13 @@ function SectionPage() {
 
 
   const toggleCheck = (item: string) => {
+    if (!requireMember()) return;
     const cur = state.entries[item]?.[slot]?.status;
     setEntry(item, { status: cur === "OK" ? "" : "OK" });
   };
 
   const markAllOK = () => {
+    if (!requireMember()) return;
     setState((prev) => {
       const entries = { ...prev.entries };
       for (const it of allItems) {
@@ -174,7 +187,9 @@ function SectionPage() {
   };
 
   const saveCheck = () => {
+    if (!requireMember()) return;
     if (!canSave) return;
+
     try {
       localStorage.setItem(key, JSON.stringify(state));
       window.dispatchEvent(new Event("linecheck:update"));
@@ -236,6 +251,13 @@ function SectionPage() {
         <h1 className="text-base font-bold tracking-tight">{section.name}</h1>
       </div>
 
+      {!hasMember && (
+        <div className="mb-4 rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-900">
+          Select a Team Member in the top bar to begin the line check.
+        </div>
+      )}
+
+
       {/* Hero card */}
       <section className="rounded-2xl border border-border bg-card px-6 py-5 shadow-sm">
         <div className="flex flex-wrap items-center justify-between gap-4">
@@ -282,7 +304,7 @@ function SectionPage() {
                 <button
                   onClick={saveCheck}
                   disabled={!canSave}
-                  title={!canSave ? `Add notes for ${missingNotes.length} flagged item(s)` : undefined}
+                  title={!hasMember ? "Select a Team Member first" : !canSave ? `Add notes for ${missingNotes.length} flagged item(s)` : undefined}
                   className="inline-flex items-center gap-1.5 rounded-full bg-foreground px-3.5 py-2 text-xs font-semibold text-background hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   <Save className="h-3.5 w-3.5" /> {savedFlash ? "Saved!" : "Save Check"}
