@@ -1,4 +1,4 @@
-import { Link, useLocation } from "@tanstack/react-router";
+import { Link, useLocation, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import {
   SECTIONS,
@@ -8,6 +8,8 @@ import {
   todayISO,
   type Slot,
 } from "@/lib/lineCheck";
+import { supabase } from "@/integrations/supabase/client";
+import { clearLocalCache } from "@/lib/cloudSync";
 import {
   LayoutDashboard,
   History,
@@ -28,7 +30,9 @@ import {
   Cake,
   Snowflake,
   Beer,
+  LogOut,
 } from "lucide-react";
+
 
 const SECTION_ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
   BAR: Beer,
