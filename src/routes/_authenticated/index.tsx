@@ -9,7 +9,7 @@ import {
 } from "@/lib/lineCheck";
 import { ArrowRight, CheckCircle2, AlertTriangle, Utensils } from "lucide-react";
 
-export const Route = createFileRoute("/")({
+export const Route = createFileRoute("/_authenticated/")({
   head: () => ({
     meta: [
       { title: "Shift Overview — Line Check 2026" },

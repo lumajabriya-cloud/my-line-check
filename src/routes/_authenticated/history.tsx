@@ -16,7 +16,7 @@ import {
   Filter,
 } from "lucide-react";
 
-export const Route = createFileRoute("/history")({
+export const Route = createFileRoute("/_authenticated/history")({
   head: () => ({
     meta: [
       { title: "Shift History — Line Check 2026" },

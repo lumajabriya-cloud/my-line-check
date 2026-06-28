@@ -32,7 +32,7 @@ function loadSectionStruct(name: string, fallback: EditCategory[]): EditCategory
   return fallback;
 }
 
-export const Route = createFileRoute("/section/$name")({
+export const Route = createFileRoute("/_authenticated/section/$name")({
   head: ({ params }) => ({
     meta: [
       { title: `${params.name} — Line Check` },
