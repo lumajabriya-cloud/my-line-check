@@ -170,21 +170,8 @@ function SectionPage() {
     setEntry(item, { status: cur === "OK" ? "" : "OK" });
   };
 
-  const markAllOK = () => {
-    if (!requireMember()) return;
-    setState((prev) => {
-      const entries = { ...prev.entries };
-      for (const it of allItems) {
-        entries[it.name] = {
-          op: entries[it.name]?.op ?? emptyEntry(),
-          mid: entries[it.name]?.mid ?? emptyEntry(),
-          cl: entries[it.name]?.cl ?? emptyEntry(),
-          [slot]: { status: "OK", note: entries[it.name]?.[slot]?.note ?? "" },
-        };
-      }
-      return { ...prev, entries };
-    });
-  };
+
+
 
   const saveCheck = () => {
     if (!requireMember()) return;
@@ -474,7 +461,7 @@ function SectionPage() {
                   const noteMissing = flagged && !e?.note?.trim();
                   return (
                     <div
-                      key={item.name}
+                      key={`${cat.group}:${item.name}`}
                       className={`rounded-2xl border bg-card transition ${
                         noteMissing ? "border-rose-400 ring-1 ring-rose-200" : flagged ? "border-rose-200" : "border-border"
                       }`}
