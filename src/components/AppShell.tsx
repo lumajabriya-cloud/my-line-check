@@ -277,10 +277,31 @@ function TopBar({
         <Pill icon={<User className="h-3.5 w-3.5" />}>
           <TeamMemberSelect value={member} onChange={setMember} />
         </Pill>
+        <SignOutButton />
       </div>
     </header>
   );
 }
+
+function SignOutButton() {
+  const navigate = useNavigate();
+  const onClick = async () => {
+    await supabase.auth.signOut();
+    clearLocalCache();
+    navigate({ to: "/auth", replace: true });
+  };
+  return (
+    <button
+      onClick={onClick}
+      title="Sign out"
+      aria-label="Sign out"
+      className="grid h-8 w-8 place-items-center rounded-full border border-border bg-card text-muted-foreground transition hover:bg-accent hover:text-foreground"
+    >
+      <LogOut className="h-3.5 w-3.5" />
+    </button>
+  );
+}
+
 
 function Pill({ icon, children }: { icon: React.ReactNode; children: React.ReactNode }) {
   return (
