@@ -1,5 +1,7 @@
 import { createFileRoute, useRouter } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { syncCheck, syncStruct } from "@/lib/cloudSync";
+
 import { AppShell, useShellState } from "@/components/AppShell";
 import {
   SECTIONS,
@@ -32,7 +34,7 @@ function loadSectionStruct(name: string, fallback: EditCategory[]): EditCategory
   return fallback;
 }
 
-export const Route = createFileRoute("/section/$name")({
+export const Route = createFileRoute("/_authenticated/section/$name")({
   head: ({ params }) => ({
     meta: [
       { title: `${params.name} — Line Check` },
@@ -116,12 +118,19 @@ function SectionPage() {
     setDraft(s);
   }, [name, defaultStruct]);
 
+  const syncTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => {
     try {
       localStorage.setItem(key, JSON.stringify(state));
       window.dispatchEvent(new Event("linecheck:update"));
     } catch {}
-  }, [key, state]);
+    if (syncTimer.current) clearTimeout(syncTimer.current);
+    syncTimer.current = setTimeout(() => syncCheck(name, shell.date), 600);
+    return () => {
+      if (syncTimer.current) clearTimeout(syncTimer.current);
+    };
+  }, [key, state, name, shell.date]);
+
 
   if (!section) return <div className="p-10">Section not found.</div>;
 
@@ -181,9 +190,11 @@ function SectionPage() {
       localStorage.setItem(key, JSON.stringify(state));
       window.dispatchEvent(new Event("linecheck:update"));
     } catch {}
+    syncCheck(name, shell.date);
     setSavedFlash(true);
     setTimeout(() => setSavedFlash(false), 1400);
   };
+
 
 
   const enterEdit = () => {
@@ -198,9 +209,11 @@ function SectionPage() {
     try {
       localStorage.setItem(sectionStructKey(name), JSON.stringify(draft));
     } catch {}
+    syncStruct(name);
     setStruct(draft);
     setEditMode(false);
   };
+
 
   const updateCat = (i: number, patch: Partial<EditCategory>) =>
     setDraft((d) => d.map((c, idx) => (idx === i ? { ...c, ...patch } : c)));
