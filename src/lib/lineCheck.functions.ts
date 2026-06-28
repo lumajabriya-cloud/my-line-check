@@ -1,37 +1,39 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import type { Json } from "@/integrations/supabase/types";
 
 export type RemoteCheck = {
   section_name: string;
   check_date: string;
-  data: unknown;
+  data: Json;
 };
 
 export type RemoteStruct = {
   section_name: string;
-  data: unknown;
+  data: Json;
 };
 
 export const getAllChecks = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
-  .handler(async ({ context }) => {
+  .handler(async ({ context }): Promise<RemoteCheck[]> => {
     const { data, error } = await context.supabase
       .from("section_checks")
       .select("section_name, check_date, data");
     if (error) throw new Error(error.message);
-    return (data ?? []) as RemoteCheck[];
+    return data ?? [];
   });
 
 export const getAllStructs = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
-  .handler(async ({ context }) => {
+  .handler(async ({ context }): Promise<RemoteStruct[]> => {
     const { data, error } = await context.supabase
       .from("section_structs")
       .select("section_name, data");
     if (error) throw new Error(error.message);
-    return (data ?? []) as RemoteStruct[];
+    return data ?? [];
   });
+
 
 const checkSchema = z.object({
   section_name: z.string().min(1),
