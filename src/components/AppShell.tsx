@@ -366,13 +366,13 @@ export function useShellState(initialTitle: string) {
       return "";
     }
   });
-  const setMember = (v: string) => {
-    setMemberState(v);
+  useEffect(() => {
     try {
-      if (v) localStorage.setItem(MEMBER_KEY, v);
+      if (member) localStorage.setItem(MEMBER_KEY, member);
       else localStorage.removeItem(MEMBER_KEY);
     } catch {}
-  };
+  }, [member]);
+  const setMember = (v: string) => setMemberState(v);
   return { date, setDate, shift, setShift, member, setMember, title: initialTitle };
 }
 
