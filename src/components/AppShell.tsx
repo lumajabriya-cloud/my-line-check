@@ -353,10 +353,26 @@ function TeamMemberSelect({ value, onChange }: { value: string; onChange: (v: st
   );
 }
 
+const MEMBER_KEY = "linecheck:selected-member";
+
 export function useShellState(initialTitle: string) {
   const [date, setDate] = useState(todayISO());
   const [shift, setShift] = useState<Slot>(defaultShift());
-  const [member, setMember] = useState("");
+  const [member, setMemberState] = useState<string>(() => {
+    if (typeof window === "undefined") return "";
+    try {
+      return localStorage.getItem(MEMBER_KEY) || "";
+    } catch {
+      return "";
+    }
+  });
+  const setMember = (v: string) => {
+    setMemberState(v);
+    try {
+      if (v) localStorage.setItem(MEMBER_KEY, v);
+      else localStorage.removeItem(MEMBER_KEY);
+    } catch {}
+  };
   return { date, setDate, shift, setShift, member, setMember, title: initialTitle };
 }
 
