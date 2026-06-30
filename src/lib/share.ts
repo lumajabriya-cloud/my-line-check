@@ -17,7 +17,7 @@ const entrySchema = z.object({
   note: z.string().catch(""),
 });
 
-const sectionStateSchema: z.ZodType<SectionState> = z.object({
+const sectionStateSchema = z.object({
   date: z.string().catch(""),
   opening: z.string().catch(""),
   mid: z.string().catch(""),
