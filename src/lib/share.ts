@@ -6,7 +6,6 @@ import {
   loadMember,
   shiftHistory,
   type Slot,
-  type SectionState,
 } from "@/lib/lineCheck";
 import { lsStore } from "@/lib/lsStore";
 
