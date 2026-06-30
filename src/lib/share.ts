@@ -1,3 +1,4 @@
+import { z } from "zod";
 import { supabase } from "@/integrations/supabase/client";
 import {
   SECTIONS,
@@ -9,14 +10,44 @@ import {
 } from "@/lib/lineCheck";
 import { lsStore } from "@/lib/lsStore";
 
-export type SharedShiftPayload = {
-  date: string;
-  shift: Slot;
-  member: string;
-  brand_name: string;
-  summary: ReturnType<typeof shiftHistory>;
-  sections: Array<{ name: string; state: SectionState }>;
-};
+const slotSchema = z.enum(["op", "mid", "cl"]);
+
+const entrySchema = z.object({
+  status: z.string().catch(""),
+  note: z.string().catch(""),
+});
+
+const sectionStateSchema: z.ZodType<SectionState> = z.object({
+  date: z.string().catch(""),
+  opening: z.string().catch(""),
+  mid: z.string().catch(""),
+  closing: z.string().catch(""),
+  entries: z.record(z.string(), z.record(slotSchema, entrySchema)).catch({}),
+});
+
+const summarySchema = z.object({
+  date: z.string().catch(""),
+  slot: slotSchema,
+  member: z.string().catch(""),
+  stationsTouched: z.number().int().nonnegative().catch(0),
+  stationsComplete: z.number().int().nonnegative().catch(0),
+  totalItems: z.number().int().nonnegative().catch(0),
+  checkedItems: z.number().int().nonnegative().catch(0),
+  flagged: z.number().int().nonnegative().catch(0),
+});
+
+export const sharedShiftPayloadSchema = z.object({
+  date: z.string().catch(""),
+  shift: slotSchema,
+  member: z.string().catch(""),
+  brand_name: z.string().catch("LUMA"),
+  summary: summarySchema,
+  sections: z
+    .array(z.object({ name: z.string(), state: sectionStateSchema }))
+    .catch([]),
+});
+
+export type SharedShiftPayload = z.infer<typeof sharedShiftPayloadSchema>;
 
 function buildPayload(date: string, slot: Slot): SharedShiftPayload {
   const sections = SECTIONS.map((s) => ({
