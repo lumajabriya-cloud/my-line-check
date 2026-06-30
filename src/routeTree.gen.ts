@@ -9,89 +9,133 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as SettingsRouteImport } from './routes/settings'
+import { Route as HistoryRouteImport } from './routes/history'
 import { Route as AuthRouteImport } from './routes/auth'
-import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
-import { Route as AuthenticatedIndexRouteImport } from './routes/_authenticated/index'
-import { Route as AuthenticatedSettingsRouteImport } from './routes/_authenticated/settings'
-import { Route as AuthenticatedHistoryRouteImport } from './routes/_authenticated/history'
-import { Route as AuthenticatedSectionNameRouteImport } from './routes/_authenticated/section.$name'
+import { Route as IndexRouteImport } from './routes/index'
+import { Route as SectionNameRouteImport } from './routes/section.$name'
+import { Route as SIdRouteImport } from './routes/s.$id'
+import { Route as HistoryShiftRouteImport } from './routes/history.shift'
 
+const SettingsRoute = SettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const HistoryRoute = HistoryRouteImport.update({
+  id: '/history',
+  path: '/history',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
   path: '/auth',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
-  id: '/_authenticated',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const AuthenticatedIndexRoute = AuthenticatedIndexRouteImport.update({
+const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
-  getParentRoute: () => AuthenticatedRouteRoute,
+  getParentRoute: () => rootRouteImport,
 } as any)
-const AuthenticatedSettingsRoute = AuthenticatedSettingsRouteImport.update({
-  id: '/settings',
-  path: '/settings',
-  getParentRoute: () => AuthenticatedRouteRoute,
+const SectionNameRoute = SectionNameRouteImport.update({
+  id: '/section/$name',
+  path: '/section/$name',
+  getParentRoute: () => rootRouteImport,
 } as any)
-const AuthenticatedHistoryRoute = AuthenticatedHistoryRouteImport.update({
-  id: '/history',
-  path: '/history',
-  getParentRoute: () => AuthenticatedRouteRoute,
+const SIdRoute = SIdRouteImport.update({
+  id: '/s/$id',
+  path: '/s/$id',
+  getParentRoute: () => rootRouteImport,
 } as any)
-const AuthenticatedSectionNameRoute =
-  AuthenticatedSectionNameRouteImport.update({
-    id: '/section/$name',
-    path: '/section/$name',
-    getParentRoute: () => AuthenticatedRouteRoute,
-  } as any)
+const HistoryShiftRoute = HistoryShiftRouteImport.update({
+  id: '/shift',
+  path: '/shift',
+  getParentRoute: () => HistoryRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
-  '/': typeof AuthenticatedIndexRoute
+  '/': typeof IndexRoute
   '/auth': typeof AuthRoute
-  '/history': typeof AuthenticatedHistoryRoute
-  '/settings': typeof AuthenticatedSettingsRoute
-  '/section/$name': typeof AuthenticatedSectionNameRoute
+  '/history': typeof HistoryRouteWithChildren
+  '/settings': typeof SettingsRoute
+  '/history/shift': typeof HistoryShiftRoute
+  '/s/$id': typeof SIdRoute
+  '/section/$name': typeof SectionNameRoute
 }
 export interface FileRoutesByTo {
+  '/': typeof IndexRoute
   '/auth': typeof AuthRoute
-  '/history': typeof AuthenticatedHistoryRoute
-  '/settings': typeof AuthenticatedSettingsRoute
-  '/': typeof AuthenticatedIndexRoute
-  '/section/$name': typeof AuthenticatedSectionNameRoute
+  '/history': typeof HistoryRouteWithChildren
+  '/settings': typeof SettingsRoute
+  '/history/shift': typeof HistoryShiftRoute
+  '/s/$id': typeof SIdRoute
+  '/section/$name': typeof SectionNameRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
-  '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
+  '/': typeof IndexRoute
   '/auth': typeof AuthRoute
-  '/_authenticated/history': typeof AuthenticatedHistoryRoute
-  '/_authenticated/settings': typeof AuthenticatedSettingsRoute
-  '/_authenticated/': typeof AuthenticatedIndexRoute
-  '/_authenticated/section/$name': typeof AuthenticatedSectionNameRoute
+  '/history': typeof HistoryRouteWithChildren
+  '/settings': typeof SettingsRoute
+  '/history/shift': typeof HistoryShiftRoute
+  '/s/$id': typeof SIdRoute
+  '/section/$name': typeof SectionNameRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/auth' | '/history' | '/settings' | '/section/$name'
+  fullPaths:
+    | '/'
+    | '/auth'
+    | '/history'
+    | '/settings'
+    | '/history/shift'
+    | '/s/$id'
+    | '/section/$name'
   fileRoutesByTo: FileRoutesByTo
-  to: '/auth' | '/history' | '/settings' | '/' | '/section/$name'
+  to:
+    | '/'
+    | '/auth'
+    | '/history'
+    | '/settings'
+    | '/history/shift'
+    | '/s/$id'
+    | '/section/$name'
   id:
     | '__root__'
-    | '/_authenticated'
+    | '/'
     | '/auth'
-    | '/_authenticated/history'
-    | '/_authenticated/settings'
-    | '/_authenticated/'
-    | '/_authenticated/section/$name'
+    | '/history'
+    | '/settings'
+    | '/history/shift'
+    | '/s/$id'
+    | '/section/$name'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
-  AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
+  IndexRoute: typeof IndexRoute
   AuthRoute: typeof AuthRoute
+  HistoryRoute: typeof HistoryRouteWithChildren
+  SettingsRoute: typeof SettingsRoute
+  SIdRoute: typeof SIdRoute
+  SectionNameRoute: typeof SectionNameRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/settings': {
+      id: '/settings'
+      path: '/settings'
+      fullPath: '/settings'
+      preLoaderRoute: typeof SettingsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/history': {
+      id: '/history'
+      path: '/history'
+      fullPath: '/history'
+      preLoaderRoute: typeof HistoryRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/auth': {
       id: '/auth'
       path: '/auth'
@@ -99,64 +143,55 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/_authenticated': {
-      id: '/_authenticated'
-      path: ''
-      fullPath: '/'
-      preLoaderRoute: typeof AuthenticatedRouteRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/_authenticated/': {
-      id: '/_authenticated/'
+    '/': {
+      id: '/'
       path: '/'
       fullPath: '/'
-      preLoaderRoute: typeof AuthenticatedIndexRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
+      preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
     }
-    '/_authenticated/settings': {
-      id: '/_authenticated/settings'
-      path: '/settings'
-      fullPath: '/settings'
-      preLoaderRoute: typeof AuthenticatedSettingsRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/history': {
-      id: '/_authenticated/history'
-      path: '/history'
-      fullPath: '/history'
-      preLoaderRoute: typeof AuthenticatedHistoryRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/section/$name': {
-      id: '/_authenticated/section/$name'
+    '/section/$name': {
+      id: '/section/$name'
       path: '/section/$name'
       fullPath: '/section/$name'
-      preLoaderRoute: typeof AuthenticatedSectionNameRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
+      preLoaderRoute: typeof SectionNameRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/s/$id': {
+      id: '/s/$id'
+      path: '/s/$id'
+      fullPath: '/s/$id'
+      preLoaderRoute: typeof SIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/history/shift': {
+      id: '/history/shift'
+      path: '/shift'
+      fullPath: '/history/shift'
+      preLoaderRoute: typeof HistoryShiftRouteImport
+      parentRoute: typeof HistoryRoute
     }
   }
 }
 
-interface AuthenticatedRouteRouteChildren {
-  AuthenticatedHistoryRoute: typeof AuthenticatedHistoryRoute
-  AuthenticatedSettingsRoute: typeof AuthenticatedSettingsRoute
-  AuthenticatedIndexRoute: typeof AuthenticatedIndexRoute
-  AuthenticatedSectionNameRoute: typeof AuthenticatedSectionNameRoute
+interface HistoryRouteChildren {
+  HistoryShiftRoute: typeof HistoryShiftRoute
 }
 
-const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
-  AuthenticatedHistoryRoute: AuthenticatedHistoryRoute,
-  AuthenticatedSettingsRoute: AuthenticatedSettingsRoute,
-  AuthenticatedIndexRoute: AuthenticatedIndexRoute,
-  AuthenticatedSectionNameRoute: AuthenticatedSectionNameRoute,
+const HistoryRouteChildren: HistoryRouteChildren = {
+  HistoryShiftRoute: HistoryShiftRoute,
 }
 
-const AuthenticatedRouteRouteWithChildren =
-  AuthenticatedRouteRoute._addFileChildren(AuthenticatedRouteRouteChildren)
+const HistoryRouteWithChildren =
+  HistoryRoute._addFileChildren(HistoryRouteChildren)
 
 const rootRouteChildren: RootRouteChildren = {
-  AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
+  IndexRoute: IndexRoute,
   AuthRoute: AuthRoute,
+  HistoryRoute: HistoryRouteWithChildren,
+  SettingsRoute: SettingsRoute,
+  SIdRoute: SIdRoute,
+  SectionNameRoute: SectionNameRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

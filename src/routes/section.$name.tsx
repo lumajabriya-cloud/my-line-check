@@ -1,7 +1,6 @@
+import { lsStore } from "@/lib/lsStore";
 import { createFileRoute, useRouter } from "@tanstack/react-router";
-import { useEffect, useMemo, useRef, useState } from "react";
-import { syncCheck, syncStruct } from "@/lib/cloudSync";
-
+import { useEffect, useMemo, useState } from "react";
 import { AppShell, useShellState } from "@/components/AppShell";
 import {
   SECTIONS,
@@ -14,7 +13,7 @@ import {
   type SectionState,
   type Slot,
 } from "@/lib/lineCheck";
-import { Check, Edit3, Filter, MoreHorizontal, Save, Thermometer, Plus, Trash2, X } from "lucide-react";
+import { Check, ChevronDown, ChevronUp, Edit3, Filter, MoreHorizontal, Save, Thermometer, Plus, Trash2, X } from "lucide-react";
 
 type EditItem = { name: string; quality: string; shelf: string; container: string };
 type EditCategory = { group: string; temp: boolean; items: EditItem[] };
@@ -28,13 +27,13 @@ function sectionStructKey(name: string) {
 
 function loadSectionStruct(name: string, fallback: EditCategory[]): EditCategory[] {
   try {
-    const raw = localStorage.getItem(sectionStructKey(name));
+    const raw = lsStore.getItem(sectionStructKey(name));
     if (raw) return JSON.parse(raw);
   } catch {}
   return fallback;
 }
 
-export const Route = createFileRoute("/_authenticated/section/$name")({
+export const Route = createFileRoute("/section/$name")({
   head: ({ params }) => ({
     meta: [
       { title: `${params.name} — Line Check` },
@@ -118,19 +117,12 @@ function SectionPage() {
     setDraft(s);
   }, [name, defaultStruct]);
 
-  const syncTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => {
     try {
-      localStorage.setItem(key, JSON.stringify(state));
+      lsStore.setItem(key, JSON.stringify(state));
       window.dispatchEvent(new Event("linecheck:update"));
     } catch {}
-    if (syncTimer.current) clearTimeout(syncTimer.current);
-    syncTimer.current = setTimeout(() => syncCheck(name, shell.date), 600);
-    return () => {
-      if (syncTimer.current) clearTimeout(syncTimer.current);
-    };
-  }, [key, state, name, shell.date]);
-
+  }, [key, state]);
 
   if (!section) return <div className="p-10">Section not found.</div>;
 
@@ -144,20 +136,9 @@ function SectionPage() {
     const e = state.entries[i.name]?.[slot];
     return e?.status && FLAG_STATUSES.has(e.status) && !e.note?.trim();
   });
-  const hasMember = !!shell.member.trim();
-  const canSave = hasMember && missingNotes.length === 0;
-
-  const requireMember = () => {
-    if (!hasMember) {
-      alert("Please select a Team Member before continuing.");
-      return false;
-    }
-    return true;
-  };
-
+  const canSave = missingNotes.length === 0;
 
   const setEntry = (item: string, patch: Partial<Entry>) => {
-    if (!requireMember()) return;
     setState((prev) => ({
       ...prev,
       entries: {
@@ -174,27 +155,34 @@ function SectionPage() {
 
 
   const toggleCheck = (item: string) => {
-    if (!requireMember()) return;
     const cur = state.entries[item]?.[slot]?.status;
     setEntry(item, { status: cur === "OK" ? "" : "OK" });
   };
 
-
-
+  const markAllOK = () => {
+    setState((prev) => {
+      const entries = { ...prev.entries };
+      for (const it of allItems) {
+        entries[it.name] = {
+          op: entries[it.name]?.op ?? emptyEntry(),
+          mid: entries[it.name]?.mid ?? emptyEntry(),
+          cl: entries[it.name]?.cl ?? emptyEntry(),
+          [slot]: { status: "OK", note: entries[it.name]?.[slot]?.note ?? "" },
+        };
+      }
+      return { ...prev, entries };
+    });
+  };
 
   const saveCheck = () => {
-    if (!requireMember()) return;
     if (!canSave) return;
-
     try {
-      localStorage.setItem(key, JSON.stringify(state));
+      lsStore.setItem(key, JSON.stringify(state));
       window.dispatchEvent(new Event("linecheck:update"));
     } catch {}
-    syncCheck(name, shell.date);
     setSavedFlash(true);
     setTimeout(() => setSavedFlash(false), 1400);
   };
-
 
 
   const enterEdit = () => {
@@ -207,13 +195,11 @@ function SectionPage() {
   };
   const saveCategories = () => {
     try {
-      localStorage.setItem(sectionStructKey(name), JSON.stringify(draft));
+      lsStore.setItem(sectionStructKey(name), JSON.stringify(draft));
     } catch {}
-    syncStruct(name);
     setStruct(draft);
     setEditMode(false);
   };
-
 
   const updateCat = (i: number, patch: Partial<EditCategory>) =>
     setDraft((d) => d.map((c, idx) => (idx === i ? { ...c, ...patch } : c)));
@@ -240,6 +226,26 @@ function SectionPage() {
       ),
     );
 
+  const moveCat = (i: number, dir: -1 | 1) =>
+    setDraft((d) => {
+      const j = i + dir;
+      if (j < 0 || j >= d.length) return d;
+      const next = [...d];
+      [next[i], next[j]] = [next[j], next[i]];
+      return next;
+    });
+  const moveItem = (ci: number, ii: number, dir: -1 | 1) =>
+    setDraft((d) =>
+      d.map((c, idx) => {
+        if (idx !== ci) return c;
+        const j = ii + dir;
+        if (j < 0 || j >= c.items.length) return c;
+        const items = [...c.items];
+        [items[ii], items[j]] = [items[j], items[ii]];
+        return { ...c, items };
+      }),
+    );
+
   const shiftLabel = slot === "op" ? "Opening" : slot === "mid" ? "Mid" : "Closing";
   const ringStyle = {
     background: `conic-gradient(var(--ring-color, hsl(258 90% 66%)) ${pct * 3.6}deg, hsl(var(--muted)) 0deg)`,
@@ -250,13 +256,6 @@ function SectionPage() {
       <div className="mb-3 flex items-center justify-between">
         <h1 className="text-base font-bold tracking-tight">{section.name}</h1>
       </div>
-
-      {!hasMember && (
-        <div className="mb-4 rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-900">
-          Select a Team Member in the top bar to begin the line check.
-        </div>
-      )}
-
 
       {/* Hero card */}
       <section className="rounded-2xl border border-border bg-card px-6 py-5 shadow-sm">
@@ -296,9 +295,15 @@ function SectionPage() {
                   <Edit3 className="h-3.5 w-3.5" /> Edit
                 </button>
                 <button
+                  onClick={markAllOK}
+                  className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-3.5 py-2 text-xs font-semibold hover:bg-accent"
+                >
+                  <Check className="h-3.5 w-3.5" /> Mark All OK
+                </button>
+                <button
                   onClick={saveCheck}
                   disabled={!canSave}
-                  title={!hasMember ? "Select a Team Member first" : !canSave ? `Add notes for ${missingNotes.length} flagged item(s)` : undefined}
+                  title={!canSave ? `Add notes for ${missingNotes.length} flagged item(s)` : undefined}
                   className="inline-flex items-center gap-1.5 rounded-full bg-foreground px-3.5 py-2 text-xs font-semibold text-background hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   <Save className="h-3.5 w-3.5" /> {savedFlash ? "Saved!" : "Save Check"}
@@ -351,6 +356,24 @@ function SectionPage() {
             {draft.map((cat, ci) => (
               <div key={ci} className="rounded-xl border border-border bg-background/40 p-3">
                 <div className="flex items-center gap-2">
+                  <div className="flex flex-col">
+                    <button
+                      onClick={() => moveCat(ci, -1)}
+                      disabled={ci === 0}
+                      className="grid h-4 w-6 place-items-center rounded text-muted-foreground hover:bg-accent disabled:opacity-30"
+                      aria-label="Move category up"
+                    >
+                      <ChevronUp className="h-3.5 w-3.5" />
+                    </button>
+                    <button
+                      onClick={() => moveCat(ci, 1)}
+                      disabled={ci === draft.length - 1}
+                      className="grid h-4 w-6 place-items-center rounded text-muted-foreground hover:bg-accent disabled:opacity-30"
+                      aria-label="Move category down"
+                    >
+                      <ChevronDown className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
                   <input
                     value={cat.group}
                     onChange={(e) => updateCat(ci, { group: e.target.value })}
@@ -382,6 +405,24 @@ function SectionPage() {
                   {cat.items.map((it, ii) => (
                     <div key={ii} className="space-y-1.5">
                       <div className="flex items-center gap-2">
+                        <div className="flex flex-col">
+                          <button
+                            onClick={() => moveItem(ci, ii, -1)}
+                            disabled={ii === 0}
+                            className="grid h-4 w-6 place-items-center rounded text-muted-foreground hover:bg-accent disabled:opacity-30"
+                            aria-label="Move item up"
+                          >
+                            <ChevronUp className="h-3.5 w-3.5" />
+                          </button>
+                          <button
+                            onClick={() => moveItem(ci, ii, 1)}
+                            disabled={ii === cat.items.length - 1}
+                            className="grid h-4 w-6 place-items-center rounded text-muted-foreground hover:bg-accent disabled:opacity-30"
+                            aria-label="Move item down"
+                          >
+                            <ChevronDown className="h-3.5 w-3.5" />
+                          </button>
+                        </div>
                         <input
                           value={it.name}
                           onChange={(e) => updateItem(ci, ii, { name: e.target.value })}
@@ -474,7 +515,7 @@ function SectionPage() {
                   const noteMissing = flagged && !e?.note?.trim();
                   return (
                     <div
-                      key={`${cat.group}:${item.name}`}
+                      key={item.name}
                       className={`rounded-2xl border bg-card transition ${
                         noteMissing ? "border-rose-400 ring-1 ring-rose-200" : flagged ? "border-rose-200" : "border-border"
                       }`}
