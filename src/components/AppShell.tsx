@@ -1,4 +1,5 @@
-import { Link, useLocation, useNavigate } from "@tanstack/react-router";
+import { lsStore } from "@/lib/lsStore";
+import { Link, useLocation } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import {
   SECTIONS,
@@ -8,8 +9,6 @@ import {
   todayISO,
   type Slot,
 } from "@/lib/lineCheck";
-import { supabase } from "@/integrations/supabase/client";
-import { clearLocalCache } from "@/lib/cloudSync";
 import {
   LayoutDashboard,
   History,
@@ -32,7 +31,6 @@ import {
   Beer,
   LogOut,
 } from "lucide-react";
-
 
 const SECTION_ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
   BAR: Beer,
@@ -104,9 +102,11 @@ function Sidebar({ date, shift }: { date: string; shift: Slot }) {
     const fn = () => setTick((t) => t + 1);
     window.addEventListener("storage", fn);
     window.addEventListener("linecheck:update", fn);
+    window.addEventListener("linecheck:scope-change", fn);
     return () => {
       window.removeEventListener("storage", fn);
       window.removeEventListener("linecheck:update", fn);
+      window.removeEventListener("linecheck:scope-change", fn);
     };
   }, []);
 
@@ -184,7 +184,44 @@ function Sidebar({ date, shift }: { date: string; shift: Slot }) {
           })}
         </ul>
       </div>
+      <SignOutButton collapsed={collapsed} />
     </aside>
+  );
+}
+
+function SignOutButton({ collapsed }: { collapsed: boolean }) {
+  const [email, setEmail] = useState<string | null>(null);
+  useEffect(() => {
+    let active = true;
+    import("@/integrations/supabase/client").then(({ supabase }) => {
+      supabase.auth.getUser().then(({ data }) => {
+        if (active) setEmail(data.user?.email ?? null);
+      });
+    });
+    return () => {
+      active = false;
+    };
+  }, []);
+  const handle = async () => {
+    const { supabase } = await import("@/integrations/supabase/client");
+    await supabase.auth.signOut();
+    window.location.href = "/auth";
+  };
+  return (
+    <div className="border-t border-sidebar-border px-3 py-3">
+      {!collapsed && email && (
+        <p className="mb-2 truncate px-2 text-[10px] text-muted-foreground" title={email}>
+          {email}
+        </p>
+      )}
+      <button
+        onClick={handle}
+        className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-xs font-medium text-muted-foreground hover:bg-sidebar-accent hover:text-foreground"
+      >
+        <LogOut className="h-4 w-4" />
+        {!collapsed && <span>Sign out</span>}
+      </button>
+    </div>
   );
 }
 
@@ -277,31 +314,10 @@ function TopBar({
         <Pill icon={<User className="h-3.5 w-3.5" />}>
           <TeamMemberSelect value={member} onChange={setMember} />
         </Pill>
-        <SignOutButton />
       </div>
     </header>
   );
 }
-
-function SignOutButton() {
-  const navigate = useNavigate();
-  const onClick = async () => {
-    await supabase.auth.signOut();
-    clearLocalCache();
-    navigate({ to: "/auth", replace: true });
-  };
-  return (
-    <button
-      onClick={onClick}
-      title="Sign out"
-      aria-label="Sign out"
-      className="grid h-8 w-8 place-items-center rounded-full border border-border bg-card text-muted-foreground transition hover:bg-accent hover:text-foreground"
-    >
-      <LogOut className="h-3.5 w-3.5" />
-    </button>
-  );
-}
-
 
 function Pill({ icon, children }: { icon: React.ReactNode; children: React.ReactNode }) {
   return (
@@ -313,27 +329,24 @@ function Pill({ icon, children }: { icon: React.ReactNode; children: React.React
 }
 
 function TeamMemberSelect({ value, onChange }: { value: string; onChange: (v: string) => void }) {
-  const [members, setMembers] = useState<string[]>(() => {
-    try {
-      const raw = localStorage.getItem("linecheck:settings:staff");
-      if (raw) return JSON.parse(raw);
-    } catch {}
-    return STAFF;
-  });
+  const [members, setMembers] = useState<string[]>(STAFF);
   useEffect(() => {
     const refresh = () => {
       try {
-        const raw = localStorage.getItem("linecheck:settings:staff");
+        const raw = lsStore.getItem("linecheck:settings:staff");
         setMembers(raw ? JSON.parse(raw) : STAFF);
       } catch {
         setMembers(STAFF);
       }
     };
+    refresh();
     window.addEventListener("storage", refresh);
     window.addEventListener("linecheck:staff-update", refresh);
+    window.addEventListener("linecheck:scope-change", refresh);
     return () => {
       window.removeEventListener("storage", refresh);
       window.removeEventListener("linecheck:staff-update", refresh);
+      window.removeEventListener("linecheck:scope-change", refresh);
     };
   }, []);
   return (
@@ -353,26 +366,38 @@ function TeamMemberSelect({ value, onChange }: { value: string; onChange: (v: st
   );
 }
 
-const MEMBER_KEY = "linecheck:selected-member";
-
 export function useShellState(initialTitle: string) {
   const [date, setDate] = useState(todayISO());
   const [shift, setShift] = useState<Slot>(defaultShift());
-  const [member, setMemberState] = useState<string>(() => {
-    if (typeof window === "undefined") return "";
-    try {
-      return localStorage.getItem(MEMBER_KEY) || "";
-    } catch {
-      return "";
-    }
-  });
+  const [member, setMemberState] = useState("");
+
+  // Load member for the current (date, shift) whenever it changes.
   useEffect(() => {
-    try {
-      if (member) localStorage.setItem(MEMBER_KEY, member);
-      else localStorage.removeItem(MEMBER_KEY);
-    } catch {}
-  }, [member]);
-  const setMember = (v: string) => setMemberState(v);
+    import("@/lib/lineCheck").then(({ loadMember }) => {
+      setMemberState(loadMember(date, shift));
+    });
+  }, [date, shift]);
+
+  // Refresh when scope changes (sign in/out) or other tabs update.
+  useEffect(() => {
+    const refresh = () => {
+      import("@/lib/lineCheck").then(({ loadMember }) => {
+        setMemberState(loadMember(date, shift));
+      });
+    };
+    window.addEventListener("linecheck:scope-change", refresh);
+    window.addEventListener("storage", refresh);
+    return () => {
+      window.removeEventListener("linecheck:scope-change", refresh);
+      window.removeEventListener("storage", refresh);
+    };
+  }, [date, shift]);
+
+  const setMember = (v: string) => {
+    setMemberState(v);
+    import("@/lib/lineCheck").then(({ saveMember }) => saveMember(date, shift, v));
+  };
+
   return { date, setDate, shift, setShift, member, setMember, title: initialTitle };
 }
 
@@ -384,16 +409,18 @@ function BrandMark({ collapsed }: { collapsed: boolean }) {
     setMounted(true);
     const refresh = () => {
       try {
-        setName(localStorage.getItem("linecheck:settings:brand:name") || "LUMA");
-        setLogo(localStorage.getItem("linecheck:settings:brand:logo"));
+        setName(lsStore.getItem("linecheck:settings:brand:name") || "LUMA");
+        setLogo(lsStore.getItem("linecheck:settings:brand:logo"));
       } catch {}
     };
     refresh();
     window.addEventListener("storage", refresh);
     window.addEventListener("linecheck:brand-update", refresh);
+    window.addEventListener("linecheck:scope-change", refresh);
     return () => {
       window.removeEventListener("storage", refresh);
       window.removeEventListener("linecheck:brand-update", refresh);
+      window.removeEventListener("linecheck:scope-change", refresh);
     };
   }, []);
   const initial = (name || "L").trim().charAt(0).toUpperCase() || "L";

@@ -1,4 +1,6 @@
 import data from "@/data/lineCheck.json";
+import { lsStore, getUserScope } from "@/lib/lsStore";
+
 
 export type Slot = "op" | "mid" | "cl";
 export type Entry = { status: string; note: string };
@@ -34,9 +36,81 @@ export function emptyEntry(): Entry {
   return { status: "", note: "" };
 }
 
+export function memberKey(date: string, slot: Slot) {
+  return `linecheck:member:${slot}:${date}`;
+}
+export function loadMember(date: string, slot: Slot): string {
+  try {
+    return lsStore.getItem(memberKey(date, slot)) || "";
+  } catch {
+    return "";
+  }
+}
+export function saveMember(date: string, slot: Slot, name: string) {
+  try {
+    if (name) lsStore.setItem(memberKey(date, slot), name);
+    else lsStore.removeItem(memberKey(date, slot));
+    if (typeof window !== "undefined")
+      window.dispatchEvent(new Event("linecheck:update"));
+  } catch {}
+}
+
+export type ShiftHistory = {
+  date: string;
+  slot: Slot;
+  member: string;
+  stationsTouched: number;
+  stationsComplete: number;
+  flagged: number;
+  totalItems: number;
+  checkedItems: number;
+};
+
+export function shiftHistory(date: string, slot: Slot): ShiftHistory {
+  let stationsTouched = 0;
+  let stationsComplete = 0;
+  let flagged = 0;
+  let totalItems = 0;
+  let checkedItems = 0;
+  for (const sec of SECTIONS) {
+    const state = loadSection(sec.name, date);
+    let anyTouched = false;
+    let allDone = true;
+    for (const item of sec.items) {
+      totalItems++;
+      const e = state.entries[item.name]?.[slot];
+      if (e?.status) {
+        anyTouched = true;
+        checkedItems++;
+        if (FLAG_STATUSES.has(e.status)) flagged++;
+      } else {
+        allDone = false;
+      }
+    }
+    if (anyTouched) stationsTouched++;
+    if (anyTouched && allDone && sec.items.length > 0) stationsComplete++;
+  }
+  return {
+    date,
+    slot,
+    member: loadMember(date, slot),
+    stationsTouched,
+    stationsComplete,
+    flagged,
+    totalItems,
+    checkedItems,
+  };
+}
+
+export const SLOT_LABEL: Record<Slot, string> = {
+  op: "Opening",
+  mid: "Mid",
+  cl: "Closing",
+};
+
 export function loadSection(name: string, date = todayISO()): SectionState {
   try {
-    const raw = localStorage.getItem(storageKey(name, date));
+    const raw = lsStore.getItem(storageKey(name, date));
     if (raw) return JSON.parse(raw);
   } catch {}
   return { date, opening: "", mid: "", closing: "", entries: {} };
@@ -95,10 +169,11 @@ export type DayHistory = {
 
 export function listHistoryDates(): string[] {
   const dates = new Set<string>();
+  // Touch scope so the function re-runs when scope changes elsewhere
+  void getUserScope();
   try {
-    for (let i = 0; i < localStorage.length; i++) {
-      const k = localStorage.key(i);
-      if (!k || !k.startsWith("linecheck:")) continue;
+    for (const k of lsStore.keys()) {
+      if (!k.startsWith("linecheck:")) continue;
       const parts = k.split(":");
       const d = parts[parts.length - 1];
       if (/^\d{4}-\d{2}-\d{2}$/.test(d)) dates.add(d);

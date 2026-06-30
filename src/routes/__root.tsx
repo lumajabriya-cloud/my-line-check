@@ -11,6 +11,7 @@ import { useEffect, type ReactNode } from "react";
 
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
+import { AuthGate } from "../components/AuthGate";
 
 function NotFoundComponent() {
   return (
@@ -77,15 +78,15 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "mylinecheck" },
+      { title: "Lovable App" },
       { name: "description", content: "Kitchen Assistant Helper streamlines kitchen operations by managing orders and inventory." },
       { name: "author", content: "Lovable" },
-      { property: "og:title", content: "mylinecheck" },
+      { property: "og:title", content: "Lovable App" },
       { property: "og:description", content: "Kitchen Assistant Helper streamlines kitchen operations by managing orders and inventory." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
       { name: "twitter:site", content: "@Lovable" },
-      { name: "twitter:title", content: "mylinecheck" },
+      { name: "twitter:title", content: "Lovable App" },
       { name: "twitter:description", content: "Kitchen Assistant Helper streamlines kitchen operations by managing orders and inventory." },
       { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/cfde3693-2996-48b1-8896-378bca9e5100/id-preview-8e047a91--dbe25eee-6a9e-46a4-a3e5-577464143d41.lovable.app-1782415498506.png" },
       { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/cfde3693-2996-48b1-8896-378bca9e5100/id-preview-8e047a91--dbe25eee-6a9e-46a4-a3e5-577464143d41.lovable.app-1782415498506.png" },
@@ -119,26 +120,13 @@ function RootShell({ children }: { children: ReactNode }) {
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
-  const router = useRouter();
-
-  useEffect(() => {
-    // Lazy-import so SSR doesn't touch localStorage.
-    import("@/integrations/supabase/client").then(({ supabase }) => {
-      const { data: sub } = supabase.auth.onAuthStateChange((event) => {
-        if (event !== "SIGNED_IN" && event !== "SIGNED_OUT" && event !== "USER_UPDATED")
-          return;
-        router.invalidate();
-        if (event !== "SIGNED_OUT") queryClient.invalidateQueries();
-      });
-      return () => sub.subscription.unsubscribe();
-    });
-  }, [router, queryClient]);
 
   return (
     <QueryClientProvider client={queryClient}>
-      {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
-      <Outlet />
+      <AuthGate>
+        {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
+        <Outlet />
+      </AuthGate>
     </QueryClientProvider>
   );
 }
-
