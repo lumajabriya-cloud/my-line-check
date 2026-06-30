@@ -6,9 +6,11 @@ import {
   FLAG_STATUSES,
   SLOT_LABEL,
   type Slot,
-  type SectionState,
 } from "@/lib/lineCheck";
-import type { SharedShiftPayload } from "@/lib/share";
+import {
+  sharedShiftPayloadSchema,
+  type SharedShiftPayload,
+} from "@/lib/share";
 import {
   AlertTriangle,
   CheckCircle2,
@@ -29,10 +31,7 @@ export const Route = createFileRoute("/s/$id")({
   component: SharedView,
 });
 
-type Row = {
-  fromState: SectionState;
-  sectionName: string;
-};
+type SharedSection = SharedShiftPayload["sections"][number]["state"];
 
 function SharedView() {
   const { id } = Route.useParams();
@@ -53,13 +52,22 @@ function SharedView() {
       .maybeSingle()
       .then(({ data: row, error: err }) => {
         if (!active) return;
-        if (err) setError(err.message);
-        else if (!row) setError("This share link no longer exists.");
-        else
-          setData({
-            payload: row.payload as unknown as SharedShiftPayload,
-            updated_at: row.updated_at,
-          });
+        if (err) {
+          setError(err.message);
+        } else if (!row) {
+          setError("This share link no longer exists.");
+        } else {
+          const parsed = sharedShiftPayloadSchema.safeParse(row.payload);
+          if (!parsed.success) {
+            console.error("[shared shift] invalid payload", parsed.error);
+            setError("This shared shift is incomplete or corrupted.");
+          } else {
+            setData({
+              payload: parsed.data,
+              updated_at: row.updated_at ?? new Date().toISOString(),
+            });
+          }
+        }
         setLoading(false);
       });
     return () => {
@@ -69,9 +77,10 @@ function SharedView() {
 
   const grouped = useMemo(() => {
     if (!data) return [];
-    const slot = data.payload.shift as Slot;
-    const map = new Map<string, SectionState>();
+    const slot: Slot = data.payload.shift;
+    const map = new Map<string, SharedSection>();
     for (const s of data.payload.sections) map.set(s.name, s.state);
+
     type Item = { item: string; status: string; note: string; flagged: boolean };
     const out: { section: string; items: Item[] }[] = [];
     for (const sec of SECTIONS) {
