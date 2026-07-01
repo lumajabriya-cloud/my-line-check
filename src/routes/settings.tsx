@@ -593,3 +593,79 @@ function StatusPanel() {
     </div>
   );
 }
+
+/* ============= SIMPLE LIST (SHELVES / CONTAINERS) ============= */
+
+function SimpleListPanel({
+  storageKey,
+  defaults,
+  icon,
+  placeholder,
+  eventName,
+}: {
+  storageKey: string;
+  defaults: string[];
+  icon: React.ReactNode;
+  placeholder: string;
+  eventName: string;
+}) {
+  const [items, setItems] = useState<string[]>(() => loadJSON(storageKey, defaults));
+  const [name, setName] = useState("");
+
+  useEffect(() => {
+    lsStore.setItem(storageKey, JSON.stringify(items));
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new Event(eventName));
+    }
+  }, [items, storageKey, eventName]);
+
+  const add = () => {
+    const n = name.trim();
+    if (!n) return;
+    if (items.some((x) => x.toLowerCase() === n.toLowerCase())) {
+      setName("");
+      return;
+    }
+    setItems((s) => [n, ...s]);
+    setName("");
+  };
+
+  return (
+    <div>
+      <div className="mb-4 flex items-center gap-2">
+        <input
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          onKeyDown={(e) => e.key === "Enter" && add()}
+          placeholder={placeholder}
+          className="flex-1 rounded-full border border-border bg-card px-5 py-3 text-sm outline-none focus:border-foreground/30"
+        />
+        <button
+          onClick={add}
+          className="flex items-center gap-1.5 rounded-full bg-muted-foreground/80 px-5 py-3 text-sm font-semibold text-background hover:bg-foreground"
+        >
+          <Plus className="h-4 w-4" /> Add
+        </button>
+      </div>
+
+      <ul className="space-y-2">
+        {items.map((v, i) => (
+          <li
+            key={v + i}
+            className="flex items-center gap-3 rounded-2xl border border-border bg-card px-4 py-3 shadow-sm"
+          >
+            {icon}
+            <span className="font-semibold tracking-tight">{v}</span>
+            <button
+              onClick={() => setItems((arr) => arr.filter((_, j) => j !== i))}
+              className="ml-auto grid h-7 w-7 place-items-center rounded-md text-muted-foreground hover:bg-danger-soft hover:text-danger"
+              aria-label="Delete"
+            >
+              <Trash2 className="h-4 w-4" />
+            </button>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
