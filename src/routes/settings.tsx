@@ -9,6 +9,8 @@ import {
   Utensils,
   Users,
   Tag,
+  Clock,
+  Package,
   Plus,
   Trash2,
   ChevronRight,
