@@ -29,7 +29,7 @@ export const Route = createFileRoute("/settings")({
   component: SettingsPage,
 });
 
-type Tab = "branding" | "stations" | "team" | "statuses";
+type Tab = "branding" | "stations" | "team" | "statuses" | "shelves" | "containers";
 
 const ICON_OPTIONS = Object.keys(SECTION_ICONS);
 
@@ -42,6 +42,35 @@ type LocalStation = {
 const STATIONS_KEY = "linecheck:settings:stations";
 const STAFF_KEY = "linecheck:settings:staff";
 const STATUSES_KEY = "linecheck:settings:statuses";
+const SHELVES_KEY = "linecheck:settings:shelves";
+const CONTAINERS_KEY = "linecheck:settings:containers";
+
+const DEFAULT_SHELVES = [
+  "By Expiration",
+  "1 Day",
+  "2 Days",
+  "3 Days",
+  "5 Days",
+  "7 Days",
+  "30 Days",
+  "60 Days",
+];
+const DEFAULT_CONTAINERS = [
+  "Can",
+  "Bottle",
+  "Jar",
+  "Container",
+  "1/9 Pan",
+  "1/6 Pan",
+  "1/4 Pan",
+  "1/3 Pan",
+  "1/2 Pan",
+  "Full Pan",
+  "Squeeze Bottle",
+  "Drizzle Bottle",
+  "Shaker",
+  "Piping Bag",
+];
 
 function loadJSON<T>(key: string, fallback: T): T {
   try {
