@@ -120,7 +120,16 @@ function HistoryPage() {
           <ArrowLeft className="h-4 w-4" />
         </button>
         <h2 className="text-base font-bold tracking-tight">History</h2>
+        <button
+          onClick={() => setShowClear(true)}
+          className="ml-auto inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1.5 text-xs font-semibold text-muted-foreground transition-colors hover:border-danger/40 hover:bg-danger-soft hover:text-danger"
+          title="Clear all history"
+        >
+          <Trash2 className="h-3.5 w-3.5" />
+          Clear history
+        </button>
       </div>
+      {showClear && <ClearHistoryModal onClose={() => setShowClear(false)} onCleared={() => setTick((t) => t + 1)} />}
 
       <section className="rounded-3xl border border-border bg-card p-6 lg:p-7">
         <div className="flex items-center gap-2">
