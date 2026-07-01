@@ -18,8 +18,37 @@ import { Check, ChevronDown, ChevronUp, Edit3, Filter, MoreHorizontal, Save, The
 type EditItem = { name: string; quality: string; shelf: string; container: string };
 type EditCategory = { group: string; temp: boolean; items: EditItem[] };
 
-const SHELF_OPTIONS = ["By Expiration", "1 Day", "3 Days", "7 Days", "14 Days", "30 Days", "60 Days", "90 Days"];
-const CONTAINER_OPTIONS = ["Can", "Bottle", "1/3 Pan", "1/6 Pan", "1/9 Pan", "Full Pan", "Half Pan", "Quart", "Squeeze Bottle", "Other"];
+const DEFAULT_SHELF_OPTIONS = ["By Expiration", "1 Day", "3 Days", "7 Days", "14 Days", "30 Days", "60 Days", "90 Days"];
+const DEFAULT_CONTAINER_OPTIONS = ["Can", "Bottle", "1/3 Pan", "1/6 Pan", "1/9 Pan", "Full Pan", "Half Pan", "Quart", "Squeeze Bottle", "Other"];
+const SHELVES_KEY = "linecheck:settings:shelves";
+const CONTAINERS_KEY = "linecheck:settings:containers";
+
+function readList(key: string, fallback: string[]): string[] {
+  try {
+    const raw = lsStore.getItem(key);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed) && parsed.every((v) => typeof v === "string")) return parsed;
+    }
+  } catch {}
+  return fallback;
+}
+
+function useOptionList(key: string, evt: string, fallback: string[]): string[] {
+  const [list, setList] = useState<string[]>(() => readList(key, fallback));
+  useEffect(() => {
+    const refresh = () => setList(readList(key, fallback));
+    window.addEventListener(evt, refresh);
+    window.addEventListener("storage", refresh);
+    window.addEventListener("linecheck:scope-change", refresh);
+    return () => {
+      window.removeEventListener(evt, refresh);
+      window.removeEventListener("storage", refresh);
+      window.removeEventListener("linecheck:scope-change", refresh);
+    };
+  }, [key, evt, fallback]);
+  return list;
+}
 
 function sectionStructKey(name: string) {
   return `linecheck:section-items:${name}`;
