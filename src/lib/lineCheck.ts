@@ -182,6 +182,24 @@ export function listHistoryDates(): string[] {
   return [...dates].sort((a, b) => (a < b ? 1 : -1));
 }
 
+/** Delete all recorded line-check data (per-shift member selections and
+ *  per-section entries) for the current user scope. Settings (stations, staff,
+ *  statuses, shelves, containers, branding) are preserved. */
+export function clearAllHistory(): number {
+  let removed = 0;
+  try {
+    for (const k of lsStore.keys()) {
+      if (!k.startsWith("linecheck:")) continue;
+      if (k.startsWith("linecheck:settings:")) continue;
+      lsStore.removeItem(k);
+      removed++;
+    }
+    if (typeof window !== "undefined")
+      window.dispatchEvent(new Event("linecheck:update"));
+  } catch {}
+  return removed;
+}
+
 export function dayHistory(date: string): DayHistory {
   let stationsTouched = 0;
   let stationsComplete = 0;
