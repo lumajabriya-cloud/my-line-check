@@ -5,10 +5,12 @@ import {
   SECTIONS,
   listHistoryDates,
   shiftHistory,
+  clearAllHistory,
   SLOT_LABEL,
   type ShiftHistory,
   type Slot,
 } from "@/lib/lineCheck";
+import { supabase } from "@/integrations/supabase/client";
 import {
   ArrowLeft,
   Calendar,
@@ -21,6 +23,9 @@ import {
   Sunrise,
   Sun,
   Moon,
+  Trash2,
+  Lock,
+  X,
 } from "lucide-react";
 
 export const Route = createFileRoute("/history")({
@@ -50,6 +55,8 @@ function HistoryPage() {
   const [shiftFilter, setShiftFilter] = useState<string>("ALL");
   const [tick, setTick] = useState(0);
   const [copied, setCopied] = useState<string | null>(null);
+  const [showClear, setShowClear] = useState(false);
+
 
   useEffect(() => {
     const fn = () => setTick((t) => t + 1);
@@ -113,7 +120,16 @@ function HistoryPage() {
           <ArrowLeft className="h-4 w-4" />
         </button>
         <h2 className="text-base font-bold tracking-tight">History</h2>
+        <button
+          onClick={() => setShowClear(true)}
+          className="ml-auto inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1.5 text-xs font-semibold text-muted-foreground transition-colors hover:border-danger/40 hover:bg-danger-soft hover:text-danger"
+          title="Clear all history"
+        >
+          <Trash2 className="h-3.5 w-3.5" />
+          Clear history
+        </button>
       </div>
+      {showClear && <ClearHistoryModal onClose={() => setShowClear(false)} onCleared={() => setTick((t) => t + 1)} />}
 
       <section className="rounded-3xl border border-border bg-card p-6 lg:p-7">
         <div className="flex items-center gap-2">
@@ -349,5 +365,129 @@ function ShiftRow({
         </button>
       </div>
     </li>
+  );
+}
+
+function ClearHistoryModal({
+  onClose,
+  onCleared,
+}: {
+  onClose: () => void;
+  onCleared: () => void;
+}) {
+  const [password, setPassword] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [done, setDone] = useState<number | null>(null);
+
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (busy) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const { data: userRes, error: uErr } = await supabase.auth.getUser();
+      if (uErr || !userRes.user?.email) {
+        setError("You need to be signed in to clear history.");
+        setBusy(false);
+        return;
+      }
+      const { error: signErr } = await supabase.auth.signInWithPassword({
+        email: userRes.user.email,
+        password,
+      });
+      if (signErr) {
+        setError("Incorrect password. Please try again.");
+        setBusy(false);
+        return;
+      }
+      const removed = clearAllHistory();
+      setDone(removed);
+      onCleared();
+    } catch {
+      setError("Something went wrong. Please try again.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+      onClick={onClose}
+    >
+      <div
+        className="w-full max-w-sm rounded-2xl border border-border bg-card p-6 shadow-2xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="mb-4 flex items-center gap-3">
+          <div className="grid h-10 w-10 place-items-center rounded-full bg-danger-soft text-danger">
+            <Trash2 className="h-5 w-5" />
+          </div>
+          <div className="flex-1">
+            <h3 className="text-base font-bold tracking-tight">Clear all history?</h3>
+            <p className="text-xs text-muted-foreground">
+              This permanently deletes every recorded line check on this device.
+            </p>
+          </div>
+          <button
+            onClick={onClose}
+            className="grid h-7 w-7 place-items-center rounded-md text-muted-foreground hover:bg-muted"
+            aria-label="Close"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+
+        {done !== null ? (
+          <div className="rounded-xl bg-success-soft px-4 py-3 text-sm text-success">
+            Cleared {done} record{done === 1 ? "" : "s"}.
+            <button
+              onClick={onClose}
+              className="mt-3 w-full rounded-full bg-foreground py-2 text-xs font-semibold text-background"
+            >
+              Done
+            </button>
+          </div>
+        ) : (
+          <form onSubmit={submit} className="space-y-3">
+            <label className="block text-xs font-bold uppercase tracking-[0.14em] text-muted-foreground">
+              Confirm your password
+            </label>
+            <div className="relative">
+              <Lock className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <input
+                type="password"
+                autoFocus
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="Your account password"
+                className="w-full rounded-full border border-border bg-background py-2.5 pl-9 pr-4 text-sm outline-none focus:border-foreground/30"
+                required
+              />
+            </div>
+            {error && (
+              <p className="text-xs font-semibold text-danger">{error}</p>
+            )}
+            <div className="flex gap-2 pt-1">
+              <button
+                type="button"
+                onClick={onClose}
+                className="flex-1 rounded-full border border-border bg-background py-2 text-xs font-semibold text-muted-foreground hover:text-foreground"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={busy || !password}
+                className="flex-1 rounded-full bg-danger py-2 text-xs font-semibold text-white shadow-sm transition-opacity disabled:opacity-50"
+              >
+                {busy ? "Verifying…" : "Clear history"}
+              </button>
+            </div>
+          </form>
+        )}
+      </div>
+    </div>
   );
 }

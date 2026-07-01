@@ -9,6 +9,8 @@ import {
   Utensils,
   Users,
   Tag,
+  Clock,
+  Package,
   Plus,
   Trash2,
   ChevronRight,
@@ -29,7 +31,7 @@ export const Route = createFileRoute("/settings")({
   component: SettingsPage,
 });
 
-type Tab = "branding" | "stations" | "team" | "statuses";
+type Tab = "branding" | "stations" | "team" | "statuses" | "shelves" | "containers";
 
 const ICON_OPTIONS = Object.keys(SECTION_ICONS);
 
@@ -42,6 +44,35 @@ type LocalStation = {
 const STATIONS_KEY = "linecheck:settings:stations";
 const STAFF_KEY = "linecheck:settings:staff";
 const STATUSES_KEY = "linecheck:settings:statuses";
+const SHELVES_KEY = "linecheck:settings:shelves";
+const CONTAINERS_KEY = "linecheck:settings:containers";
+
+const DEFAULT_SHELVES = [
+  "By Expiration",
+  "1 Day",
+  "2 Days",
+  "3 Days",
+  "5 Days",
+  "7 Days",
+  "30 Days",
+  "60 Days",
+];
+const DEFAULT_CONTAINERS = [
+  "Can",
+  "Bottle",
+  "Jar",
+  "Container",
+  "1/9 Pan",
+  "1/6 Pan",
+  "1/4 Pan",
+  "1/3 Pan",
+  "1/2 Pan",
+  "Full Pan",
+  "Squeeze Bottle",
+  "Drizzle Bottle",
+  "Shaker",
+  "Piping Bag",
+];
 
 function loadJSON<T>(key: string, fallback: T): T {
   try {
@@ -83,12 +114,36 @@ function SettingsPage() {
           <TabPill active={tab === "statuses"} onClick={() => setTab("statuses")} icon={<Tag className="h-4 w-4" />}>
             Status Options
           </TabPill>
+          <TabPill active={tab === "shelves"} onClick={() => setTab("shelves")} icon={<Clock className="h-4 w-4" />}>
+            Shelf Life
+          </TabPill>
+          <TabPill active={tab === "containers"} onClick={() => setTab("containers")} icon={<Package className="h-4 w-4" />}>
+            Container
+          </TabPill>
         </div>
 
         {tab === "branding" && <BrandingPanel />}
         {tab === "stations" && <StationsPanel />}
         {tab === "team" && <TeamPanel />}
         {tab === "statuses" && <StatusPanel />}
+        {tab === "shelves" && (
+          <SimpleListPanel
+            storageKey={SHELVES_KEY}
+            defaults={DEFAULT_SHELVES}
+            icon={<Clock className="h-4 w-4 text-muted-foreground" />}
+            placeholder="New shelf life (e.g. 3 Days)..."
+            eventName="linecheck:shelves-update"
+          />
+        )}
+        {tab === "containers" && (
+          <SimpleListPanel
+            storageKey={CONTAINERS_KEY}
+            defaults={DEFAULT_CONTAINERS}
+            icon={<Package className="h-4 w-4 text-muted-foreground" />}
+            placeholder="New container (e.g. 1/6 Pan)..."
+            eventName="linecheck:containers-update"
+          />
+        )}
       </div>
     </AppShell>
   );
@@ -527,6 +582,82 @@ function StatusPanel() {
             <span className="font-semibold tracking-tight">{s}</span>
             <button
               onClick={() => setStatuses((arr) => arr.filter((_, j) => j !== i))}
+              className="ml-auto grid h-7 w-7 place-items-center rounded-md text-muted-foreground hover:bg-danger-soft hover:text-danger"
+              aria-label="Delete"
+            >
+              <Trash2 className="h-4 w-4" />
+            </button>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+/* ============= SIMPLE LIST (SHELVES / CONTAINERS) ============= */
+
+function SimpleListPanel({
+  storageKey,
+  defaults,
+  icon,
+  placeholder,
+  eventName,
+}: {
+  storageKey: string;
+  defaults: string[];
+  icon: React.ReactNode;
+  placeholder: string;
+  eventName: string;
+}) {
+  const [items, setItems] = useState<string[]>(() => loadJSON(storageKey, defaults));
+  const [name, setName] = useState("");
+
+  useEffect(() => {
+    lsStore.setItem(storageKey, JSON.stringify(items));
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new Event(eventName));
+    }
+  }, [items, storageKey, eventName]);
+
+  const add = () => {
+    const n = name.trim();
+    if (!n) return;
+    if (items.some((x) => x.toLowerCase() === n.toLowerCase())) {
+      setName("");
+      return;
+    }
+    setItems((s) => [n, ...s]);
+    setName("");
+  };
+
+  return (
+    <div>
+      <div className="mb-4 flex items-center gap-2">
+        <input
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          onKeyDown={(e) => e.key === "Enter" && add()}
+          placeholder={placeholder}
+          className="flex-1 rounded-full border border-border bg-card px-5 py-3 text-sm outline-none focus:border-foreground/30"
+        />
+        <button
+          onClick={add}
+          className="flex items-center gap-1.5 rounded-full bg-muted-foreground/80 px-5 py-3 text-sm font-semibold text-background hover:bg-foreground"
+        >
+          <Plus className="h-4 w-4" /> Add
+        </button>
+      </div>
+
+      <ul className="space-y-2">
+        {items.map((v, i) => (
+          <li
+            key={v + i}
+            className="flex items-center gap-3 rounded-2xl border border-border bg-card px-4 py-3 shadow-sm"
+          >
+            {icon}
+            <span className="font-semibold tracking-tight">{v}</span>
+            <button
+              onClick={() => setItems((arr) => arr.filter((_, j) => j !== i))}
               className="ml-auto grid h-7 w-7 place-items-center rounded-md text-muted-foreground hover:bg-danger-soft hover:text-danger"
               aria-label="Delete"
             >
