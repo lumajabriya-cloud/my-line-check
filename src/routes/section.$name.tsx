@@ -126,6 +126,8 @@ function SectionPage() {
   const [editMode, setEditMode] = useState(false);
   const [savedFlash, setSavedFlash] = useState(false);
   const [flaggedOnly, setFlaggedOnly] = useState(false);
+  const SHELF_OPTIONS = useOptionList(SHELVES_KEY, "linecheck:shelves-update", DEFAULT_SHELF_OPTIONS);
+  const CONTAINER_OPTIONS = useOptionList(CONTAINERS_KEY, "linecheck:containers-update", DEFAULT_CONTAINER_OPTIONS);
 
   const defaultStruct = useMemo(
     () => (section ? buildDefaultStruct(section) : []),
