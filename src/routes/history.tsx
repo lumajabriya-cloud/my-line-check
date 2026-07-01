@@ -5,10 +5,12 @@ import {
   SECTIONS,
   listHistoryDates,
   shiftHistory,
+  clearAllHistory,
   SLOT_LABEL,
   type ShiftHistory,
   type Slot,
 } from "@/lib/lineCheck";
+import { supabase } from "@/integrations/supabase/client";
 import {
   ArrowLeft,
   Calendar,
@@ -21,6 +23,9 @@ import {
   Sunrise,
   Sun,
   Moon,
+  Trash2,
+  Lock,
+  X,
 } from "lucide-react";
 
 export const Route = createFileRoute("/history")({
@@ -50,6 +55,8 @@ function HistoryPage() {
   const [shiftFilter, setShiftFilter] = useState<string>("ALL");
   const [tick, setTick] = useState(0);
   const [copied, setCopied] = useState<string | null>(null);
+  const [showClear, setShowClear] = useState(false);
+
 
   useEffect(() => {
     const fn = () => setTick((t) => t + 1);
